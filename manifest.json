@@ -1,0 +1,44 @@
+{
+  "manifest_version": 3,
+  "name": "Adaptive Meeting Prepper",
+  "version": "1.0",
+  "description": "AI-powered meeting prep",
+  "permissions": [
+    "storage",
+    "tabs",
+    "scripting",
+    "notifications",
+    "identity",
+    "alarms",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "https://mail.google.com/*",
+    "https://*.googleapis.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "index.html",
+    "default_icon": {
+      
+  },
+  "side_panel": {
+    "default_path": "index.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://mail.google.com/*"],
+      "js": ["content/gmail_scraper.js"]
+    }
+  ],
+  "oauth2": {
+    "client_id": "YOUR-CLIENT-ID from google OAuth 2.0 Client IDs in credentials section",
+    "scopes": [
+      "https://www.googleapis.com/auth/gmail.readonly",
+      "https://www.googleapis.com/auth/calendar.readonly"
+    ]
+  }
+}
+}
