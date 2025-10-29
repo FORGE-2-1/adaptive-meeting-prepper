@@ -1,6 +1,6 @@
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.type === 'emailsScraped') {
-    // Forward emails to popup
+    // Forward emails to popup (or store for further AI processing)
     chrome.runtime.sendMessage(msg);
   }
 });

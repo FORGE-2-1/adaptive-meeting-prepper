@@ -71,7 +71,7 @@ scanEmailsBtn.onclick = async () => {
       target: { tabId: tab.id },
       files: ['content/gmail_scraper.js']
     });
-  }, 3000);
+  }, 5000);
 };
 
 // Listen to emails scraped from content script
@@ -216,7 +216,7 @@ generateBtn.onclick = async () => {
     const mood = moodSelect.value;
 
     const { date, time } = await chrome.storage.local.get('meetingDatetime').then(data => data.meetingDatetime || {});
-    const meetingDateTime = date ? `${date}${time ? ` at ${time}` : ''}` : 'not set'; // Define meetingDateTime here
+    const meetingDateTime = date ? `${date}${time ? ` at ${time}` : ''}` : 'not set';
 
     if (!notes) {
       outputDiv.textContent = 'Please provide content to generate prep.';
@@ -226,75 +226,85 @@ generateBtn.onclick = async () => {
     outputDiv.textContent = 'Processing...';
 
     const inputPrompt = `
-    You are a meeting preparation assistant. Your task is to help the user prepare effectively for their upcoming meeting.
+You are a meeting preparation assistant. Your task is to help the user prepare effectively for their upcoming meeting.
 
-    Meeting date and time: ${meetingDateTime}
-    User mood: ${mood}
+Meeting date and time: ${meetingDateTime}
+User mood: ${mood}
 
-    Here are the user's notes, which include relevant emails, calendar events, and additional context:
-    ${notes}
+Here are the user's notes, which include relevant emails, calendar events, and additional context:
+${notes}
 
-    Based on this information, provide the following in JSON format:
-    {
-      "summary": "A concise summary of the meeting context.",
-      "talkingPoints": ["Key talking point 1", "Key talking point 2", "..."],
-      "advice": "Personalized advice or strategies tailored to the user's mood and the meeting's purpose.",
-      "risks": ["Potential risk 1", "Potential risk 2", "..."],
-      "mitigationStrategies": ["Mitigation strategy 1", "Mitigation strategy 2", "..."]
-    }
-    Ensure your response is clear, actionable, and empathetic.
-    `;
+Based on this information, provide the following response in plain English following this format exactly:
+
+Meeting Summary:
+<one concise paragraph>
+
+Talking Points:
+- <bullet point 1>
+- <bullet point 2>
+- ...
+
+Advice:
+<paragraph of personalized advice>
+
+Risks:
+- <risk 1>
+- <risk 2>
+- ...
+
+Mitigation Strategies:
+- <mitigation strategy 1>
+- <mitigation strategy 2>
+- ...
+
+Do not return JSON or code delimiters. Respond with plain text that follows this structure exactly.
+`;
 
     let finalOutput = '';
     const stream = lmSession.promptStreaming(inputPrompt);
     for await (const chunk of stream) {
       finalOutput += chunk;
+      outputDiv.textContent = finalOutput; // update UI progressively showing streaming data
     }
 
-    const cleaned = finalOutput
-    .replace(/^```json/, '')   // Remove ```json at the start
-    .replace(/^json/, '')      // Remove json at the start
-    .replace(/```$/, '')       // Remove closing ```
-    .trim();                   // Remove extra whitespace
-
-
-    // Parse the AI's JSON response
-    
-    const parsedOutput = JSON.parse(cleaned);//finalOutput);
-    try {
-
-      outputDiv.innerHTML = `
-        <h3>Meeting Prep</h3>
-        <p><strong>Summary:</strong> ${parsedOutput.summary}</p>
-
-        <p><strong>Talking Points:</strong></p>
-        <ul>
-          ${parsedOutput.talkingPoints.map(point => `<li>${point}</li>`).join('')}
-        </ul>
-
-        <p><strong>Advice:</strong> ${parsedOutput.advice}</p>
-
-        <p><strong>Risks:</strong></p>
-        <ul>
-          ${parsedOutput.risks.map(risk => `<li>${risk}</li>`).join('')}
-        </ul>
-
-        <p><strong>Mitigation Strategies:</strong></p>
-        <ul>
-          ${parsedOutput.mitigationStrategies.map(strategy => `<li>${strategy}</li>`).join('')}
-        </ul>
-      `;
-    } catch (e) {
-      outputDiv.textContent = parsedOutput; //'Error parsing AI response. Please try again.';
-      console.error('Parsing error:', e);
+    // After streaming complete, try to lightly parse sections to display nicely
+    function extractSection(text, sectionName) {
+      const regex = new RegExp(`${sectionName}:[\\r\\n]+([\\s\\S]*?)(?=^[A-Z][a-z]+:|$)`, 'm');
+      const match = text.match(regex);
+      return match ? match[1].trim() : '';
     }
+
+    const summary = extractSection(finalOutput, 'Meeting Summary');
+    const talkingPointsRaw = extractSection(finalOutput, 'Talking Points');
+    const advice = extractSection(finalOutput, 'Advice');
+    const risksRaw = extractSection(finalOutput, 'Risks');
+    const mitigationRaw = extractSection(finalOutput, 'Mitigation Strategies');
+
+    function parseBullets(text) {
+      return text.split('\n').filter(line => line.trim().startsWith('-')).map(line => line.replace(/^- /, '').trim());
+    }
+    const talkingPoints = parseBullets(talkingPointsRaw);
+    const risks = parseBullets(risksRaw);
+    const mitigationStrategies = parseBullets(mitigationRaw);
+
+    outputDiv.innerHTML = `
+      <h3>Meeting Prep</h3>
+      <p><strong>Summary:</strong> ${summary}</p>
+      <p><strong>Talking Points:</strong></p>
+      <ul>${talkingPoints.map(point => `<li>${point}</li>`).join('')}</ul>
+      <p><strong>Advice:</strong> ${advice}</p>
+      <p><strong>Risks:</strong></p>
+      <ul>${risks.map(r => `<li>${r}</li>`).join('')}</ul>
+      <p><strong>Mitigation Strategies:</strong></p>
+      <ul>${mitigationStrategies.map(m => `<li>${m}</li>`).join('')}</ul>
+    `;
 
     chatHistory.push({ role: 'user', content: notes });
     chatHistory.push({ role: 'assistant', content: finalOutput });
 
     await chrome.storage.local.set({ chatContext: chatHistory });
 
-    // Suggest a follow-up question after generating prep
+    // Suggest follow-up question as usual
     await suggestFollowUpQuestion();
 
   } catch (e) {
