@@ -12,10 +12,6 @@
     "alarms",
     "activeTab"
   ],
-  "host_permissions": [
-    "https://mail.google.com/*",
-    "https://*.googleapis.com/*"
-  ],
   "background": {
     "service_worker": "background.js"
   },
@@ -32,13 +28,6 @@
       "matches": ["https://mail.google.com/*"],
       "js": ["content/gmail_scraper.js"]
     }
-  ],
-  "oauth2": {
-    "client_id": "YOUR-CLIENT-ID from google OAuth 2.0 Client IDs in credentials section",
-    "scopes": [
-      "https://www.googleapis.com/auth/gmail.readonly",
-      "https://www.googleapis.com/auth/calendar.readonly"
-    ]
-  }
+  ]
 }
 }
