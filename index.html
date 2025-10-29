@@ -2,84 +2,259 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>Meeting Prep Assistant</title>
+<title>Adaptive Meeting Prepper</title>
 <style>
-  body { 
-    font-family: Arial, 
-    sans-serif; 
-    margin: 15px; 
-    width: 380px; 
-    background: #f9f9f9; 
+  body {
+    font-family: 'Inter', Arial, sans-serif;
+    background: linear-gradient(95deg, #141627 60%, #1b215e 100%);
+    width: 380px;
+    min-height: 100vh;
+    margin: 0;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
   }
-  textarea { 
-    width: 100%; 
-    height: 120px; 
-    margin-top: 5px; 
-    border-radius: 5px; 
-    padding: 8px; 
-    font-size: 14px; 
+  #container {
+    width: 388px;
+    max-height: 96vh;
+    padding: 30px 24px 18px 24px;
+    /* background: rgba(22, 24, 39, 0.97); */
+    border-radius: 25px;
+    box-shadow: 0 8px 32px rgba(30,30,60,0.27);
+    color: #f7faff;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    margin: 16px 0;
+    /* overflow-y: auto; */
   }
-  button { 
-    margin-top: 10px; 
-    width: 100%; 
-    padding: 10px; 
-    cursor: pointer; 
-    border: none; 
-    border-radius: 5px; 
-    font-weight: bold; 
-    background-color: #0069ed; 
-    color: white; 
+  h1 {
+    text-align: center;
+    font-size: 2em;
+    font-weight: 700;
+    color: #f7faff;
+    margin-bottom: 9px;
+    line-height: 1.15;
+    text-shadow: 0 2px 16px #2e3b708c;
   }
-  #output { 
-    margin-top: 15px; 
-    background: white; 
-    border-radius: 5px; 
-    min-height: 150px; 
-    padding: 10px; 
-    overflow-y: auto; 
-    white-space: pre-wrap; 
+  .section {
+    margin-bottom: 18px;
   }
-  select, label { 
-    font-weight: bold; 
-    margin-top: 10px; 
-    display: block; 
+  .divider {
+    border-bottom: 1.5px solid #252f56;
+    margin: 18px 0 7px 0;
   }
+  label, #output {
+    font-weight: 600;
+    margin-bottom: 4px;
+    color: #e2e6fa;
+    font-size: 1rem;
+    letter-spacing: 0.01em;
+  }
+  textarea, select, input[type="date"], input[type="time"] {
+    width: 100%;
+    background: #1a1f31;
+    color: #f7faff;
+    border-radius: 10px;
+    border: 1.2px solid #27305c;
+    font-size: 1em;
+    padding: 12px;
+    margin-bottom: 8px;
+    resize: none;
+    outline: none;
+    transition: border 0.21s;
+  }
+  #emailFilter, #userNotes {
+    font-family: 'Inter', Arial, sans-serif;
+    line-height: 1.5;
+    box-shadow: 0 1px 6px rgba(0, 0, 0, 0.08);
+    transition: box-shadow 0.2s ease-in-out;
+  }
+  #emailFilter:focus, #userNotes:focus {
+    box-shadow: 0 2px 8px rgba(0, 123, 255, 0.15);
+  }
+  textarea:focus, select:focus, input[type="date"]:focus, input[type="time"]:focus {
+    border: 1.2px solid #6ddfff;
+  }
+  button {
+    width: 100%;
+    font-size: 1.08em;
+    font-weight: 700;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    padding: 13px 0;
+    margin-top: 7px;
+    background: linear-gradient(90deg, #8e73f8 0%, #3eb6ff 100%);
+    color: #f8fbff;
+    box-shadow: 0 2px 12px #29408760;
+    transition: background 0.18s, color 0.13s, transform 0.13s;
+  }
+  button:disabled {
+    background: #343c60;
+    color: #969dcf;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+  #resetBtn { background: linear-gradient(90deg, #363d82 0%, #2768b4 80%); color: #c9d6ff; }
+  #output {
+    min-height: 44px;
+    background: #181c31;
+    color: #c3e2fb;
+    border-radius: 10px;
+    padding: 13px;
+    margin-top: 10px;
+    border: 1.2px solid #21286e;
+    font-size: 1.03em;
+    line-height: 1.5;
+  }
+  #suggestedQuestion {
+    margin-top: 15px;
+    background: #242e4d;
+    color: #bdf1ff;
+    border-radius: 8px;
+    padding: 10px;
+    font-weight: 500;
+    font-size: 1em;
+    box-shadow: 0 1px 8px #176e9732;
+    cursor: pointer;
+    text-align: center;
+    display: block;
+  }
+  #suggestedQuestion:hover {
+    background: #4061a0;
+    color: #dcf5fd;
+  }
+  #useQuestionBtn {
+    margin: 6px auto 0 auto;
+    width: 60%;
+    background: linear-gradient(90deg, #8fa1fa 10%, #38e3e1 90%);
+    color: #152342;
+    border-radius: 8px;
+    font-size: 1em;
+    font-weight: 700;
+    box-shadow: 0 1px 6px #32537a26;
+    display: none;
+  }
+  footer {
+    text-align: center;
+    margin-top: 12px;
+    color: #c9d6ff;
+    font-size: 0.9em;
+  }
+  /* Section title bar for focus */
+  .sectionTitle {
+    font-size: 1.09em;
+    font-weight: 700;
+    color: #b2d9ff;
+    margin-bottom: 7px;
+    letter-spacing: 0.01em;
+    text-shadow: 0 1px 16px #2e3b708c;
+  }
+  input[type="date"],
+  input[type="time"] {
+    background-color: #93c8fe;
+    border: 1px solid #ccc;
+    padding: 5px;
+    border-radius: 4px;
+  }
+  @media (max-width: 480px) {
+    #container { width: 100vw; min-width: 0; border-radius: 0; }
+  }
+
+  
+
+  body[data-mood="confident"] #generateBtn,
+  body[data-mood="confident"] #captureSlideBtn,
+  body[data-mood="confident"] #scanCalendarBtn,
+  body[data-mood="confident"] #scanEmailsBtn {
+    background: linear-gradient(90deg, #23d7a9 0%, #46c3fc 100%);
+  }
+  body[data-mood="neutral"] #generateBtn,
+  body[data-mood="neutral"] #captureSlideBtn,
+  body[data-mood="neutral"] #scanCalendarBtn,
+  body[data-mood="neutral"] #scanEmailsBtn {
+    background: linear-gradient(90deg, #8e73f8 0%, #3eb6ff 100%);
+  }
+  body[data-mood="anxious"] #generateBtn,
+  body[data-mood="anxious"] #captureSlideBtn,
+  body[data-mood="anxious"] #scanCalendarBtn,
+  body[data-mood="anxious"] #scanEmailsBtn {
+    background: linear-gradient(90deg, #fff7cc 10%, #ffb685 90%);
+    color: #22223a;
+  }
+  body[data-mood="tired"] #generateBtn,
+  body[data-mood="tired"] #captureSlideBtn,
+  body[data-mood="tired"] #scanCalendarBtn,
+  body[data-mood="tired"] #scanEmailsBtn {
+    background: linear-gradient(90deg, #ccdbe7 10%, #bab9f9 90%);
+    color: #142746;
+  }
+  /* Optional: Background accent for even stronger effect */
+  body[data-mood="confident"] #container { box-shadow: 0 8px 40px #22ffab32; }
+  body[data-mood="anxious"] #container { box-shadow: 0 8px 40px #fedfaa36; }
+  body[data-mood="tired"] #container   { box-shadow: 0 8px 40px #bab9f946; }
+
+
+  
 </style>
 </head>
 <body>
-  <h1>Adaptive Meeting Prepper</h1>
+  <div id="container">
 
-  <button id="signInBtn">Sign In to Google</button>
-  <button id="signOutBtn" style="display:none;">Sign Out</button>
+    <h1>Adaptive Meeting Prepper</h1>
 
-  <label for="emailFilter">Gmail Filter (optional):</label>
-  <textarea id="emailFilter" placeholder='e.g. label:inbox from:boss@company.com after:2025/10/01'></textarea>
-  <button id="scanEmailsBtn" disabled>Scan Emails</button>
+    <div class="section">
+      <label for="userNotes" class="sectionTitle">Meeting Notes / Paste Content:</label>
+      <textarea id="userNotes" rows="6" placeholder="Paste emails, agendas, or your meeting notes here..."></textarea>
+      <label for="mood">Your Current Mood:</label>
+      <select id="mood">
+        <option value="confident">Confident</option>
+        <option value="neutral" selected>Neutral</option>
+        <option value="anxious">Anxious</option>
+        <option value="tired">Tired</option>
+      </select>
+      <button id="generateBtn" disabled>Generate Meeting Prep</button>
+      <div id="output">Output will appear here...</div>
+    </div>
 
-  <button id="scanCalendarBtn" disabled>Fetch Upcoming Meetings</button>
+    <div class="divider"></div>
 
-  <label for="userNotes">Meeting Notes / Paste Content:</label>
-  <textarea id="userNotes" placeholder="Paste emails, agendas, or meeting notes here..."></textarea>
+    <div class="section">
+      <div class="sectionTitle">Auto Suggestions</div>
+      <div id="suggestedQuestion">Suggested Question will appear here...</div>
+      <button id="useQuestionBtn">Use Suggested Question</button>
+    </div>
 
-  <label for="mood">Your current mood:</label>
-  <select id="mood">
-    <option value="confident">Confident</option>
-    <option value="neutral" selected>Neutral</option>
-    <option value="anxious">Anxious</option>
-    <option value="tired">Tired</option>
-  </select>
+    <div class="divider"></div>
 
-  <button id="generateBtn" disabled>Generate Meeting Prep</button>
-  <button id="captureSlideBtn">Capture Slide</button>
-  <button id="resetBtn">Reset Session</button>
+    <div class="section">
+      <div class="sectionTitle">Meeting Date & Time (Optional)</div>
+      <input type="date" id="meetingDate" />
+      <input type="time" id="meetingTime" />
+      <div id="meetingDateTimeDisplay" style="color: #b2d9ff; font-weight: 600; font-size: 0.95em; margin-bottom: 16px;">
+        No meeting date/time set
+      </div>
+    </div>
 
-  <div id="output">Output will appear here...</div>
+    <div class="divider"></div>
 
-  <div id="suggestedQuestion" style="margin-top: 15px; background: #e9ecef; padding: 10px; border-radius: 5px;">
-    Suggested Question will appear here...
+    <div class="section">
+      <div class="sectionTitle">Optional Tools</div>
+      <label for="emailFilter">Gmail Filter (optional):</label>
+      <textarea id="emailFilter" rows="2" placeholder="e.g. label:inbox from:boss@company.com after:2025/10/01"></textarea>
+      <button id="scanEmailsBtn">Scan Emails</button>
+      <!-- <button id="scanCalendarBtn">Fetch Upcoming Meetings</button> -->
+      <div style="display: flex; gap: 10px; margin-top: 12px;">
+        <button id="captureSlideBtn">Capture Slide</button>
+        <button id="resetBtn">Reset Session</button>
+      </div>
+    </div>
+
+    <footer>
+      © 2025 Adaptive Meeting Prepper
+    </footer>
   </div>
-  <button id="useQuestionBtn" style="display:none;">Use Suggested Question</button>
-
 <script type="module" src="index.js"></script>
 </body>
 </html>

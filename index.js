@@ -1,72 +1,63 @@
-const signInBtn = document.getElementById('signInBtn');
-const signOutBtn = document.getElementById('signOutBtn');
+// import { LanguageModel } from 'chrome://language-model/';
+
 const scanEmailsBtn = document.getElementById('scanEmailsBtn');
 const scanCalendarBtn = document.getElementById('scanCalendarBtn');
-const generateBtn = document.getElementById('generateBtn');
+const captureSlideBtn = document.getElementById('captureSlideBtn');
 const resetBtn = document.getElementById('resetBtn');
+const generateBtn = document.getElementById('generateBtn');
+const useQuestionBtn = document.getElementById('useQuestionBtn');
+
 const emailFilterInput = document.getElementById('emailFilter');
 const userNotesInput = document.getElementById('userNotes');
 const moodSelect = document.getElementById('mood');
 const outputDiv = document.getElementById('output');
-const captureSlideBtn = document.getElementById('captureSlideBtn');
 const suggestedQuestionDiv = document.getElementById('suggestedQuestion');
-const useQuestionBtn = document.getElementById('useQuestionBtn');
+
+const meetingDateInput = document.getElementById('meetingDate');
+const meetingTimeInput = document.getElementById('meetingTime');
+const meetingDateTimeDisplay = document.getElementById('meetingDateTimeDisplay');
 
 let lmSession = null;
 let chatHistory = [];
+let suggestedQuestion = null;
 
-async function updateUIOnSignIn(signedIn) {
-  signInBtn.style.display = signedIn ? 'none' : 'inline-block';
-  signOutBtn.style.display = signedIn ? 'inline-block' : 'none';
-  scanEmailsBtn.disabled = !signedIn;
-  scanCalendarBtn.disabled = !signedIn;
-  generateBtn.disabled = !signedIn;
-}
 
-async function signIn() {
-  try {
-    const clientId = "YOUR-CLIENT-ID from google OAuth 2.0 Client IDs in credentials section"//chrome.runtime.getManifest().oauth2.client_id;
-    const redirectUri = chrome.identity.getRedirectURL();
-    console.log(redirectUri)
-    const scopes = "https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/calendar.readonly"//chrome.runtime.getManifest().oauth2.scopes.join(' ');
-    await chrome.identity.launchWebAuthFlow({
-      'url': `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&response_type=token&redirect_uri=${redirectUri}&scope=${encodeURIComponent(scopes)}`,
-      'interactive': true
-    }, async redirectUrl => {
-      console.log('Redirect URL:', redirectUrl); // Log the redirect URL
-      if (redirectUrl) {
-        // Extract token from redirectUrl
-        const url = new URL(redirectUrl);
-        const accessToken = url.hash.match(/access_token=([^&]+)/)[1];
-        console.log("access token-----"+accessToken)
-        chrome.storage.local.set({accessToken});
-        await updateUIOnSignIn(true);
-      }
-    });
-  } catch (e) {
-    outputDiv.textContent = 'Sign-in failed. Please try again.'+ e;
+userNotesInput.addEventListener('input', () => {
+  generateBtn.disabled = !userNotesInput.value.trim();
+});
+
+// Manual meeting date/time display update + local storage
+function updateMeetingDateTimeDisplay() {
+  const date = meetingDateInput.value;
+  const time = meetingTimeInput.value;
+  if (date && time) {
+    meetingDateTimeDisplay.textContent = `Scheduled for: ${date} at ${time}`;
+  } else if (date) {
+    meetingDateTimeDisplay.textContent = `Scheduled for: ${date}`;
+  } else {
+    meetingDateTimeDisplay.textContent = 'No meeting date/time set';
   }
+  chrome.storage.local.set({ meetingDatetime: { date, time } });
 }
 
-async function signOut() {
-  chrome.storage.local.remove('accessToken');
-  await updateUIOnSignIn(false);
-}
+meetingDateInput.addEventListener('change', updateMeetingDateTimeDisplay);
+meetingTimeInput.addEventListener('change', updateMeetingDateTimeDisplay);
 
-signInBtn.onclick = signIn;
-signOutBtn.onclick = signOut;
+// Load meeting date/time on startup
+chrome.storage.local.get('meetingDatetime', data => {
+  if (data.meetingDatetime) {
+    meetingDateInput.value = data.meetingDatetime.date || '';
+    meetingTimeInput.value = data.meetingDatetime.time || '';
+    updateMeetingDateTimeDisplay();
+  }
+});
 
-async function checkSignIn() {
-  const { accessToken } = await chrome.storage.local.get('accessToken');
-  await updateUIOnSignIn(!!accessToken);
-}
 
-await checkSignIn();
 
 // Gmail scan flow: open Gmail filtered search and inject scraper
 scanEmailsBtn.onclick = async () => {
-  const { accessToken } = await chrome.storage.local.get('accessToken');
-  if (!accessToken) return outputDiv.textContent = 'Please sign in first';
+  // const { accessToken } = await chrome.storage.local.get('accessToken');
+  // if (!accessToken) return outputDiv.textContent = 'Please sign in first';
 
   const filter = emailFilterInput.value.trim() || 'label:inbox';
   const query = encodeURIComponent(filter);
@@ -93,33 +84,27 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   }
 });
 
-// Calendar scan fetch upcoming meetings
-scanCalendarBtn.onclick = async () => {
-  try {
-    const { accessToken } = await chrome.storage.local.get('accessToken');
-    if (!accessToken) return outputDiv.textContent = 'Please sign in first';
-
-    const nowISO = new Date().toISOString();
-    const maxTime = new Date(Date.now() + 48 * 3600 * 1000).toISOString();
-
-    const calendarResponse = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${nowISO}&timeMax=${maxTime}&singleEvents=true&orderBy=startTime`, {
-      headers: { Authorization: `Bearer ${accessToken}` }
-    });
-    const calendarData = await calendarResponse.json();
-
-    if (!calendarData.items || calendarData.items.length === 0)
-      return outputDiv.textContent = 'No upcoming meetings in next 48 hours.';
-
-    const eventsText = calendarData.items.map(ev => {
-      const start = ev.start?.dateTime || ev.start?.date || '';
-      return `${start} - ${ev.summary}`;
-    }).join('\n');
-    userNotesInput.value += (userNotesInput.value ? '\n\n' : '') + `Upcoming Meetings:\n${eventsText}`;
-    outputDiv.textContent = 'Upcoming meetings added to notes.';
-  } catch (error) {
-    outputDiv.textContent = `Error fetching calendar: ${error.message}`;
+function showSuggestedQuestion(question) {
+  if (!question) {
+    suggestedQuestionDiv.style.display = 'none';
+    suggestedQuestionDiv.textContent = '';
+    suggestedQuestion = null;
+    useQuestionBtn.style.display = 'none';
+    return;
   }
+  suggestedQuestion = question;
+  suggestedQuestionDiv.textContent = `Suggested Question: "${question}" (click Use Suggested Question button to add)`;
+  suggestedQuestionDiv.style.display = 'block';
+  useQuestionBtn.style.display = 'inline-block';
+}
+
+useQuestionBtn.onclick = () => {
+  if (!suggestedQuestion) return;
+  userNotesInput.value += (userNotesInput.value ? '\n\n' : '') + suggestedQuestion;
+  userNotesInput.focus();
+  showSuggestedQuestion(null);
 };
+
 
 // Capture current tab screenshot and append to notes (as base64 placeholder, real app would convert or OCR)
 captureSlideBtn.onclick = async () => {
@@ -230,6 +215,9 @@ generateBtn.onclick = async () => {
     const notes = userNotesInput.value.trim();
     const mood = moodSelect.value;
 
+    const { date, time } = await chrome.storage.local.get('meetingDatetime').then(data => data.meetingDatetime || {});
+    const meetingDateTime = date ? `${date}${time ? ` at ${time}` : ''}` : 'not set'; // Define meetingDateTime here
+
     if (!notes) {
       outputDiv.textContent = 'Please provide content to generate prep.';
       return;
@@ -238,27 +226,67 @@ generateBtn.onclick = async () => {
     outputDiv.textContent = 'Processing...';
 
     const inputPrompt = `
-You are a meeting preparation assistant. Your task is to help the user prepare effectively for their upcoming meeting.
+    You are a meeting preparation assistant. Your task is to help the user prepare effectively for their upcoming meeting.
 
-User mood: ${mood}
+    Meeting date and time: ${meetingDateTime}
+    User mood: ${mood}
 
-Here are the user's notes, which include relevant emails, calendar events, and additional context:
-${notes}
+    Here are the user's notes, which include relevant emails, calendar events, and additional context:
+    ${notes}
 
-Based on this information, provide the following:
-1. A concise summary of the meeting context.
-2. Key talking points or agenda items to focus on.
-3. Personalized advice or strategies tailored to the user's mood and the meeting's purpose.
-4. Any potential risks or challenges to be aware of, along with mitigation strategies.
-
-Ensure your response is clear, actionable, and empathetic.
+    Based on this information, provide the following in JSON format:
+    {
+      "summary": "A concise summary of the meeting context.",
+      "talkingPoints": ["Key talking point 1", "Key talking point 2", "..."],
+      "advice": "Personalized advice or strategies tailored to the user's mood and the meeting's purpose.",
+      "risks": ["Potential risk 1", "Potential risk 2", "..."],
+      "mitigationStrategies": ["Mitigation strategy 1", "Mitigation strategy 2", "..."]
+    }
+    Ensure your response is clear, actionable, and empathetic.
     `;
 
     let finalOutput = '';
     const stream = lmSession.promptStreaming(inputPrompt);
     for await (const chunk of stream) {
       finalOutput += chunk;
-      outputDiv.textContent = finalOutput;
+    }
+
+    const cleaned = finalOutput
+    .replace(/^```json/, '')   // Remove ```json at the start
+    .replace(/^json/, '')      // Remove json at the start
+    .replace(/```$/, '')       // Remove closing ```
+    .trim();                   // Remove extra whitespace
+
+
+    // Parse the AI's JSON response
+    
+    const parsedOutput = JSON.parse(cleaned);//finalOutput);
+    try {
+
+      outputDiv.innerHTML = `
+        <h3>Meeting Prep</h3>
+        <p><strong>Summary:</strong> ${parsedOutput.summary}</p>
+
+        <p><strong>Talking Points:</strong></p>
+        <ul>
+          ${parsedOutput.talkingPoints.map(point => `<li>${point}</li>`).join('')}
+        </ul>
+
+        <p><strong>Advice:</strong> ${parsedOutput.advice}</p>
+
+        <p><strong>Risks:</strong></p>
+        <ul>
+          ${parsedOutput.risks.map(risk => `<li>${risk}</li>`).join('')}
+        </ul>
+
+        <p><strong>Mitigation Strategies:</strong></p>
+        <ul>
+          ${parsedOutput.mitigationStrategies.map(strategy => `<li>${strategy}</li>`).join('')}
+        </ul>
+      `;
+    } catch (e) {
+      outputDiv.textContent = parsedOutput; //'Error parsing AI response. Please try again.';
+      console.error('Parsing error:', e);
     }
 
     chatHistory.push({ role: 'user', content: notes });
@@ -273,6 +301,32 @@ Ensure your response is clear, actionable, and empathetic.
     outputDiv.textContent = `Error: ${e.message}`;
   }
 };
+
+
+
+function scheduleReminder() {
+  chrome.storage.local.get('meetingDatetime', data => {
+    const md = data.meetingDatetime;
+    if (!md?.date) return;
+    const datetimeStr = md.time ? `${md.date}T${md.time}:00` : `${md.date}T09:00:00`;
+    const when = new Date(datetimeStr).getTime();
+    if (when > Date.now()) {
+      chrome.alarms.create('meetingReminder', { when });
+    }
+  });
+}
+
+chrome.alarms.onAlarm.addListener(alarm => {
+  if (alarm.name === 'meetingReminder') {
+    chrome.notifications.create('meetingNotif', {
+      type: 'basic',
+      // iconUrl: 'icon.png',
+      title: 'Upcoming Meeting',
+      message: 'Your scheduled meeting is approaching.',
+    });
+  }
+});
+
 
 // Reset session & storage
 resetBtn.onclick = async () => {
@@ -298,3 +352,9 @@ resetBtn.onclick = async () => {
 })();
 
 
+// const moodSelect = document.getElementById('mood');
+moodSelect.addEventListener('change', () => {
+  document.body.setAttribute('data-mood', moodSelect.value);
+});
+// Run once on load:
+document.body.setAttribute('data-mood', moodSelect.value);
