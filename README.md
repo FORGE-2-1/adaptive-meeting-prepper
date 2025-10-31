@@ -26,7 +26,7 @@ Using built-in AI and content scraping, it summarizes scattered emails, extracts
 
 1. Clone or download the repository.
     ```
-    git clone [https://github.com/FORGE-2-1/adaptive-meeting-prepper](https://github.com/FORGE-2-1/adaptive-meeting-prepper.git)
+    git clone https://github.com/FORGE-2-1/adaptive-meeting-prepper.git
     ```
 2. Open Google Chrome, go to `chrome://extensions/`
 3. Enable **Developer mode** (top right).
